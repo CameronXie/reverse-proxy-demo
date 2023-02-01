@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  deployer:
+    container_name: reverse_proxy_deployer
+    build:
+      context: docker/deployer
+    platform: linux/amd64
+    volumes:
+      - './:/var/deployer'
+    working_dir: '/var/deployer'
+    command: [ '/bin/sh', '-c', 'tail -f /dev/null' ]
+    environment:
+      DOCKER_HOST: tcp://docker:2375
+    env_file:
+      - .env
+    restart: always
+    privileged: true
+    depends_on:
+      - docker
+  docker:
+    container_name: reverse_proxy_docker
+    image: docker:dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR:

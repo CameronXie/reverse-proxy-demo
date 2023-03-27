@@ -40,5 +40,6 @@ deploy-reverse-proxy:
 			--template-file stacks/redhat/reverse-proxy.yaml \
 			--parameter-overrides InstanceAMI=$(shell aws ec2 describe-images --owners 309956199498 --filters Name=name,Values=RHEL-8.6.0_HVM-*-x86_64-2-Hourly2-GP2 --query 'sort_by(Images,&CreationDate)[-1].ImageId') \
 			ArtifactsBucket=$(env)-reverse-proxy-artifacts-bucket-name \
+			BucketKeyArn=$(env)-reverse-proxy-artifacts-bucket-key-arn \
 			ReverseProxyS3Key=reverseproxy-$(version) \
 			--capabilities CAPABILITY_NAMED_IAM

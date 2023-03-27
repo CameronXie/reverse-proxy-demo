@@ -4,6 +4,9 @@ Parameters:
   ArtifactsBucket:
     Description: Artifacts Bucket Reference.
     Type: String
+  BucketKeyArn:
+    Description: Bucket Key ARN
+    Type: String
   InstanceAMI:
     Description: AMI ID for EC2 Instance
     Type: AWS::EC2::Image::Id
@@ -246,7 +249,8 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       Policies:
-        - PolicyDocument:
+        - PolicyName: AuthenticatedS3GetObjects
+          PolicyDocument:
             Version: 2012-10-17
             Statement:
               - Action:
@@ -256,7 +260,16 @@ Resources:
                   - BucketName:
                       Fn::ImportValue: !Ref ArtifactsBucket
                 Effect: Allow
-          PolicyName: AuthenticatedS3GetObjects
+        - PolicyName: AllowDecryptWithKMS
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - "kms:DescribeKey"
+                  - "kms:Decrypt"
+                Resource:
+                  Fn::ImportValue: !Ref BucketKeyArn
+                Effect: Allow
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -391,7 +404,7 @@ Resources:
           files:
             /usr/local/bin/reverseproxy:
               source: !Sub
-                - https://${BucketName}.s3.amazonaws.com/${ReverseProxyS3Key}
+                - https://${BucketName}.s3.${AWS::Region}.amazonaws.com/${ReverseProxyS3Key}
                 - BucketName:
                     Fn::ImportValue: !Ref ArtifactsBucket
               mode: '000755'

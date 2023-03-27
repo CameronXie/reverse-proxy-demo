@@ -1,23 +1,42 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Artifact Bucket
 
-Parameters:
-  ExpirationInDays:
-    Description: Log Expiration In Days
-    Type: Number
-    Default: 7
-
 Resources:
+  BucketKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: !Sub ${AWS::StackName}-${AWS::AccountId}-key-policy
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+
   Bucket:
     Type: AWS::S3::Bucket
+    DependsOn: BucketKey
     Properties:
       AccessControl: Private
-      LifecycleConfiguration:
-        Rules:
-          - ExpirationInDays: !Ref ExpirationInDays
-            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !Ref BucketKey
+              SSEAlgorithm: 'aws:kms'
 
 Outputs:
+  BucketKeyArn:
+    Description: Artifact Bucket Key Arn
+    Value: !GetAtt BucketKey.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-bucket-key-arn"
   BucketName:
     Description: Artifact Bucket Name
     Value: !Ref Bucket

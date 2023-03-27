@@ -7,7 +7,8 @@ CloudFormation as IaC.
 
 ### Components
 
-* `Artifacts Bucket` An S3 Bucket which stores reverse proxy project binary (a Golang project).
+* `Artifacts Bucket` An S3 Bucket which stores reverse proxy project binary (a Golang project). The S3 bucket is using
+  server-side encryption with KMS.
 * `Reverse Proxy` An Auto Scaling Group which download reverse proxy project binary from artifacts bucket, and run it as
   a service (systemd). It uses CloudWatch Agent to send log and metric to AWS CloudWatch, and use logrotate to manage
   the reverse proxy log.
@@ -26,6 +27,7 @@ CloudFormation as IaC.
     * Application Load Balancer
     * IAM Role
     * Auto Scaling Group and Launch Template
+    * KMS
     * S3
     * CloudWatch Alarm and Log Group
 * Set up `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_DEFAULT_REGION` in `.env` file.

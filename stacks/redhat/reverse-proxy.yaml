@@ -217,11 +217,11 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
+      HealthCheckPath: /healthcheck
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       Matcher:
-        HttpCode: 200
+        HttpCode: 204
       Port: 8080
       Protocol: HTTP
       UnhealthyThresholdCount: 2
@@ -489,6 +489,8 @@ Resources:
       MinSize: 1
       MaxSize: !Ref MaxSize
       DesiredCapacity: 1
+      HealthCheckGracePeriod: 600
+      HealthCheckType: ELB
       TargetGroupARNs:
         - !Ref TargetGroup
 

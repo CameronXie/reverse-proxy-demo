@@ -28,6 +28,13 @@ func reverseProxyHandler(proxy *httputil.ReverseProxy, host string, l *zap.Logge
 	}
 }
 
+func healthCheckHandler(l *zap.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Info(fmt.Sprintf("health check %s", r.URL))
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -37,9 +44,11 @@ func main() {
 		l.Fatal(uErr.Error())
 	}
 
-	l.Info(fmt.Sprintf("redirect request to %s", *addr))
+	l.Info(fmt.Sprintf("listen address :%s, redirect requests to %s", *port, *addr))
 
 	http.HandleFunc("/", reverseProxyHandler(httputil.NewSingleHostReverseProxy(u), u.Host, l))
+	http.HandleFunc("/healthcheck", healthCheckHandler(l))
+
 	if err := http.ListenAndServe(fmt.Sprintf(":%v", *port), nil); err != nil {
 		l.Fatal(err.Error())
 	}

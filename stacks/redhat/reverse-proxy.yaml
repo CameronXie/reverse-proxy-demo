@@ -26,6 +26,10 @@ Parameters:
     Description: Reverse Proxy Binary Object Key
     Type: String
     Default: reverseproxy
+  ReverseProxyPortNumber:
+    Description: Reverse Proxy Port Number
+    Type: Number
+    Default: 8080
 
 Mappings:
   SubnetConfig:
@@ -195,7 +199,7 @@ Resources:
 
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn: [ PublicSubnetOneRouteTableAssociation, PublicSubnetTwoRouteTableAssociation ]
+    DependsOn: [ GatewayAttachment, PublicSubnetOneRouteTableAssociation, PublicSubnetTwoRouteTableAssociation ]
     Properties:
       SecurityGroups:
         - !Ref ALBSecurityGroup
@@ -222,7 +226,7 @@ Resources:
       HealthyThresholdCount: 2
       Matcher:
         HttpCode: 204
-      Port: 8080
+      Port: !Ref ReverseProxyPortNumber
       Protocol: HTTP
       UnhealthyThresholdCount: 2
       VpcId: !Ref VPC
@@ -285,8 +289,8 @@ Resources:
       VpcId: !Ref 'VPC'
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
+          FromPort: !Ref ReverseProxyPortNumber
+          ToPort: !Ref ReverseProxyPortNumber
           SourceSecurityGroupId: !Ref ALBSecurityGroup
 
   LaunchTemplate:
@@ -412,12 +416,12 @@ Resources:
               group: root
               authentication: S3AccessCreds
             /etc/systemd/system/reverseproxy.service:
-              content: |
+              content: !Sub |
                 [Unit]
                 Description=Reverse Proxy
                 [Service]
                 Type=simple
-                ExecStart=/usr/local/bin/reverseproxy -port=8080
+                ExecStart=/usr/local/bin/reverseproxy -port=${ReverseProxyPortNumber}
                 Restart=always
                 StandardOutput=append:/var/log/reverseproxy.log
                 StandardError=append:/var/log/reverseproxy.log
@@ -436,9 +440,13 @@ Resources:
                   missingok
                 }
           commands:
-            01_reload:
+            01_config_firewall:
+              command: !Sub /usr/bin/firewall-offline-cmd --zone=public --add-port=${ReverseProxyPortNumber}/tcp
+            02_reload_firewall:
+              command: systemctl restart firewalld
+            03_reload_service:
               command: systemctl daemon-reload
-            02_restart_service:
+            04_restart_service:
               command: service reverseproxy restart
     Properties:
       LaunchTemplateData:
@@ -463,7 +471,8 @@ Resources:
             Fn::Sub: |
               #!/bin/bash -xe
               exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-              yum install -y python3
+              yum install -y python3 firewalld
+              systemctl start firewalld
               python3 -m easy_install --script-dir /opt/aws/bin https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
               /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource LaunchTemplate --region ${AWS::Region} --configsets setup
               /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource AutoScalingGroup --region ${AWS::Region}
